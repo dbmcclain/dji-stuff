@@ -7,6 +7,7 @@
   :serial t
   :components ((:file "package")
                (:file "libusb-dff")
+               (:file "libusb-dff-inl")
                (:file "libusb-support")
                (:file "libusb-ffi"))
   :depends-on ("com.ral.cps"))
