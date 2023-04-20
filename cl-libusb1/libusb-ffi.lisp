@@ -8,14 +8,14 @@
 (defun get-ver ()
   (WITH-LIBUSB1 ()
     (let ((pver (libusb-get-version)))
-      (fli:with-foreign-slots (major minor micro nano rc describe) pver
+      (xffi:with-foreign-slots (major minor micro nano rc describe) pver
         (list
          :major    major
          :minor    minor
          :micro    micro
          :nano     nano
-         :rc       (fli:convert-from-foreign-string rc)
-         :describe (fli:convert-from-foreign-string describe))
+         :rc       (xffi:convert-from-foreign-string rc)
+         :describe (xffi:convert-from-foreign-string describe))
         ))))
     
 ;; -------------------------------------------------------------
@@ -25,7 +25,7 @@
 (let ((phand  nil)
       (done   0))
 
-  (fli:define-foreign-callable ("hotplug_callback" :result-type :int)
+  (xffi:define-foreign-callable ("hotplug_callback" :result-type :int)
       ((ctxt (:pointer libusb-context))
        (dev  (:pointer libusb-device))
        (evt  (:pointer libusb-hotplug-event))
@@ -36,17 +36,17 @@
           ((desc libusb-device-descriptor))
           (libusb-get-device-descriptor dev desc)
           (print "Error getting device descriptor")
-        (fli:with-foreign-slots (idVendor idProduct) desc
+        (xffi:with-foreign-slots (idVendor idProduct) desc
           (format t "~%Device attached: ~4,'0x:~4,'0x" idVendor idProduct))
-        (let ((hand (fli:dereference phand)))
-          (unless (fli:null-pointer-p hand)
+        (let ((hand (xffi:dereference phand)))
+          (unless (xffi:null-pointer-p hand)
             (close-dev hand) ;; <-- !!
-            (setf (fli:dereference phand) nil) ))
+            (setf (xffi:dereference phand) nil) ))
         (open-dev dev phand) ;; <-- !!
         (incf done)
         0)))
 
-  (fli:define-foreign-callable ("hotplug_callback_detach" :result-type :int)
+  (xffi:define-foreign-callable ("hotplug_callback_detach" :result-type :int)
       ((ctxt (:pointer libusb-context))
        (dev  (:pointer libusb-device))
        (evt  (:pointer libusb-hotplug-event))
@@ -54,28 +54,28 @@
     (declare (ignore dev evt user-data))
     (WITH-CONTEXT ctxt
       (print "Device detached")
-      (let ((hand (fli:dereference phand)))
-        (unless (fli:null-pointer-p hand)
+      (let ((hand (xffi:dereference phand)))
+        (unless (xffi:null-pointer-p hand)
           (close-dev hand) ;; <-- !!
-          (setf (fli:dereference phand) nil)))
+          (setf (xffi:dereference phand) nil)))
       (incf done)
       0))
 
   (defun test-hotplug (vendor-id product-id &optional (class-id +LIBUSB-HOTPLUG-MATCH-ANY+))
     (WITH-LIBUSB1 (pctxt)
       (when (zerop (libusb-has-capability
-                    (fli:enum-symbol-value 'libusb-capability
+                    (xffi:enum-symbol-value 'libusb-capability
                                            'LIBUSB-CAP-HAS-HOTPLUG)))
         (error "Hotplug capabilities are not supported on this platform"))
       
       (WITH-EXCL-POLLING
-       (fli:with-dynamic-foreign-objects
+       (xffi:with-dynamic-foreign-objects
            ((ptr  (:pointer libusb-device-handle)
                   :initial-element nil))
          (setf phand  ptr
                done   0)
          (unwind-protect
-             (fli:with-dynamic-foreign-objects
+             (xffi:with-dynamic-foreign-objects
                  ((hpin  libusb-hotplug-callback-handle
                          :initial-element nil)
                   (hpout libusb-hotplug-callback-handle
@@ -83,26 +83,26 @@
                (call-libusb ()
                    (libusb-hotplug-register-callback
                     pctxt
-                    (fli:enum-symbol-value 'libusb-hotplug-event
+                    (xffi:enum-symbol-value 'libusb-hotplug-event
                                            'LIBUSB-HOTPLUG-EVENT-DEVICE-ARRIVED)
                     0
                     vendor-id
                     product-id
                     class-id
-                    (fli:make-pointer :symbol-name "hotplug_callback")
+                    (xffi:make-pointer :symbol-name "hotplug_callback")
                     nil
                     hpin)
                    (error "Error registering callback IN"))
                (call-libusb ()
                    (libusb-hotplug-register-callback
                     pctxt
-                    (fli:enum-symbol-value 'libusb-hotplug-event
+                    (xffi:enum-symbol-value 'libusb-hotplug-event
                                            'LIBUSB-HOTPLUG-EVENT-DEVICE-LEFT)
                     0
                     vendor-id
                     product-id
                     class-id
-                    (fli:make-pointer :symbol-name "hotplug_callback_detach")
+                    (xffi:make-pointer :symbol-name "hotplug_callback_detach")
                     nil
                     hpout)
                    (error "Error registering callback OUT"))
@@ -113,8 +113,8 @@
                      (error "libusb_handle_events() failed: ~A"  last-error-name)
                    )))
            ;; unwind clauses
-           (let ((hand (fli:dereference ptr)))
-             (unless (fli:null-pointer-p hand)
+           (let ((hand (xffi:dereference ptr)))
+             (unless (xffi:null-pointer-p hand)
                (close-dev hand))) ;; <-- !!
            (setf phand  nil
                  done   0))
@@ -128,25 +128,25 @@
 (defvar *npath*  8)  ;; path buffer size in bytes
 
 (defun %print-devs (pdevs)
-  (fli:with-dynamic-foreign-objects
+  (xffi:with-dynamic-foreign-objects
       ((desc (:struct libusb-device-descriptor))
        (path  uint8-t :nelems *npath*))
     (um:nlet iter ((ix 0))
-      (let ((pdev (fli:dereference pdevs :index ix)))
-        (unless (fli:null-pointer-p pdev)
+      (let ((pdev (xffi:dereference pdevs :index ix)))
+        (unless (xffi:null-pointer-p pdev)
           (call-libusb ()
               (libusb-get-device-descriptor pdev desc)
               (error "failed to get device descriptor")
-            (fli:with-foreign-slots (idVendor idProduct) desc
+            (xffi:with-foreign-slots (idVendor idProduct) desc
               (format t "~%~4,'0x:~4,'0x (bus ~d, device ~d)"
                       idVendor idProduct
                       (libusb-get-bus-number pdev)
                       (libusb-get-device-address pdev)))
             (let ((r (libusb-get-port-numbers pdev path *npath*)))
               (when (plusp r)
-                (format t "~%  path: ~d" (fli:dereference path :index 0))
+                (format t "~%  path: ~d" (xffi:dereference path :index 0))
                 (loop for jx from 1 below r do
-                          (format t ".~d" (fli:dereference path :index jx)))))
+                          (format t ".~d" (xffi:dereference path :index jx)))))
             (go-iter (1+ ix)))
           )))))
 
@@ -157,7 +157,7 @@
                  :initial-element nil))
         (libusb-get-device-list pctxt ppdevs)
         (error "Can't get devs")
-      (let ((pdevs (fli:dereference ppdevs)))
+      (let ((pdevs (xffi:dereference ppdevs)))
         (unwind-protect
             (progn
               (%print-devs pdevs)

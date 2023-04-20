@@ -96,7 +96,7 @@
            
            (t
             (let ((pctxt  (when ppctxt
-                            (fli:dereference ppctxt))))
+                            (xffi:dereference ppctxt))))
               ;; return a FUTURE that represents the outcome of the
               ;; function exec
               (flet ((exec-beh (cust)
@@ -148,7 +148,7 @@
              (ask (ask usb-mon :exec (=fut fn) ppctxt (cons usb-mon *enabled-gates*)))
              ))
       (if needs-new-context-p
-          (fli:with-dynamic-foreign-objects
+          (xffi:with-dynamic-foreign-objects
               ((ppctxt (:pointer libusb-context)))
             (doit ppctxt))
         (doit nil))
@@ -187,7 +187,7 @@
   ;;
   ;; In the err-form, you can refer to the error code using
   ;; last-errno, last-error-name, and last-error-string.
-  `(fli:with-dynamic-foreign-objects ,bindings
+  `(xffi:with-dynamic-foreign-objects ,bindings
      (do-call-libusb
       (lambda ()
         ,libfn-form)
@@ -208,10 +208,10 @@
       (funcall fn-okay))))
 
 (defun libusb-get-last-error-name (errno)
-  (fli:convert-from-foreign-string (libusb-error-name errno)))
+  (xffi:convert-from-foreign-string (libusb-error-name errno)))
     
 (defun libusb-get-last-error-string (errno)
-  (fli:convert-from-foreign-string (libusb-strerror errno)))
+  (xffi:convert-from-foreign-string (libusb-strerror errno)))
 
 ;; ----------------------------------------------
 ;; Thread-Exclusive Code Management - Take care to access successive
@@ -359,8 +359,8 @@
   (call-libusb ()
       (libusb-open dev phand)
       (error "Can't open device: ~A" last-error-name)
-    (let ((hand (fli:dereference phand)))
-      (unless (fli:null-pointer-p hand)
+    (let ((hand (xffi:dereference phand)))
+      (unless (xffi:null-pointer-p hand)
         (add-device hand)
         hand))))
 
@@ -384,7 +384,7 @@
               :initial-element nil))
       (libusb-open dev phand)
       (error "Can't open device: ~A, error: ~A" dev last-error-name)
-    (let ((hand (fli:dereference phand)))
+    (let ((hand (xffi:dereference phand)))
       (with-device hand
         (unwind-protect
             (funcall fn hand)

@@ -6,8 +6,12 @@
   :author "David McClain dbm@refined-audiometrics.com"
   :serial t
   :components ((:file "package")
+               #+:LISPWORKS (:file "xffi-to-lwfli")
+               #-:LISPWORKS (:file "xffi-to-cffi")
                (:file "libusb-dff")
                (:file "libusb-dff-inl")
                (:file "libusb-support")
                (:file "libusb-ffi"))
-  :depends-on ("com.ral.cps"))
+  :depends-on ("com.ral.cps"
+               #-:LISPWORKS :cffi
+               ))

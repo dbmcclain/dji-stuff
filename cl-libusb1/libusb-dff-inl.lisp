@@ -28,34 +28,34 @@
             ))))))
 |#
 
-(defconstant +libusb-control-setup-size+ (fli:size-of 'libusb-control-setup))
+(defconstant +libusb-control-setup-size+ (xffi:size-of 'libusb-control-setup))
 
-(fli:define-c-union chimera
+(xffi:define-c-union chimera
   (b  (:foreign-array :uint8 (2)))
   (w  :uint16))
 
 (defun libusb-le16-to-cpu (x)
-  (fli:with-dynamic-foreign-objects
+  (xffi:with-dynamic-foreign-objects
       ((tmp  chimera))
-    (setf (fli:foreign-aref (fli:foreign-slot-pointer tmp 'b) 0) (ldb (byte 8 0) x)
-          (fli:foreign-aref (fli:foreign-slot-pointer tmp 'b) 1) (ldb (byte 8 8) x))
-    (fli:foreign-slot-value tmp 'w)))
+    (setf (xffi:foreign-aref (xffi:foreign-slot-pointer tmp 'b) 0) (ldb (byte 8 0) x)
+          (xffi:foreign-aref (xffi:foreign-slot-pointer tmp 'b) 1) (ldb (byte 8 8) x))
+    (xffi:foreign-slot-value tmp 'w)))
         
 (defun libusb-cpu-to-le16 (x)
   (libusb-le16-to-cpu x))
 
 (defun libusb-control-transfer-get-data (ptransfer)
-  (let ((ptr (fli:foreign-slot-pointer ptransfer 'buffer)))
-    (fli:incf-pointer ptr +libusb-control-setup-size+)))
+  (let ((ptr (xffi:foreign-slot-pointer ptransfer 'buffer)))
+    (xffi:incf-pointer ptr +libusb-control-setup-size+)))
 
 (defun libusb-control-transfer-get-setup (ptransfer)
-  (fli:foreign-slot-pointer ptransfer 'buffer
+  (xffi:foreign-slot-pointer ptransfer 'buffer
                             :type 'libusb-control-setup))
 
 (defun libusb-fill-control-setup (buffer RequestType Request Value Index len)
-  (let ((setup (fli:make-pointer :address buffer
+  (let ((setup (xffi:make-pointer :address buffer
                                  :type    'libusb-control-setup)))
-    (fli:with-foreign-slots (bmRequestType bRequest wValue wIndex wLength) setup
+    (xffi:with-foreign-slots (bmRequestType bRequest wValue wIndex wLength) setup
       (setf bmRequestType RequestType
             bRequest      Request
             wValue        Value
@@ -64,15 +64,15 @@
     ))
 
 (defun libusb-fill-control-transfer (ptransfer adev-handle abuffer acallback auser-data atimeout)
-  (fli:with-foreign-slots (dev-handle endpoint type timeout buffer length user-data callback) ptransfer
+  (xffi:with-foreign-slots (dev-handle endpoint type timeout buffer length user-data callback) ptransfer
     (setf dev-handle adev-handle
           endpoint 0
-          type     (fli:enum-symbol-value 'LIBUSB-TRANSFER-TYPE 'LIBUSB-TRANSFER-TYPE-CONTROL)
+          type     (xffi:enum-symbol-value 'LIBUSB-TRANSFER-TYPE 'LIBUSB-TRANSFER-TYPE-CONTROL)
           timeout  atimeout
           buffer   abuffer
-          length   (unless (fli:null-pointer-p abuffer)
+          length   (unless (xffi:null-pointer-p abuffer)
                      (+ +LIBUSB-CONTROL-SETUP-SIZE+
-                        (libusb-le16-to-cpu (fli:foreign-slot-value abuffer 'wLength
+                        (libusb-le16-to-cpu (xffi:foreign-slot-value abuffer 'wLength
                                                                     :object-type '(:pointer libusb-control-setup))
                                             )))            
           user-data auser-data
@@ -80,10 +80,10 @@
     ))
 
 (defun libusb-fill-bulk-transfer (ptransfer adev-handle aendpoint pbuffer alength acallback puser-data atimeout)
-  (fli:with-foreign-slots (dev-handle endpoint type timeout buffer length user-data callback) ptransfer
+  (xffi:with-foreign-slots (dev-handle endpoint type timeout buffer length user-data callback) ptransfer
     (setf dev-handle  adev-handle
           endpoint    aendpoint
-          type        (fli:enum-symbol-value 'libusb-transfer-type 'LIBUSB-TRANSFER-TYPE-BULK)
+          type        (xffi:enum-symbol-value 'libusb-transfer-type 'LIBUSB-TRANSFER-TYPE-BULK)
           timeout     atimeout
           buffer      pbuffer
           length      alength
@@ -92,15 +92,15 @@
 
 (defun libusb-fill-bulk-stream-transfer (ptransfer adev-handle anendpoint astream-id pbuffer alength acallback puser-data atimeout)
   (libusb-fill-bulk-transfer ptransfer adev-handle anendpoint pbuffer alength acallback puser-data atimeout)
-  (setf (fli:foreign-slot-value ptransfer 'type)
-        (fli:enum-symbol-value 'libusb-transfer-type 'libusb-transfer-type-bulk-stream))
+  (setf (xffi:foreign-slot-value ptransfer 'type)
+        (xffi:enum-symbol-value 'libusb-transfer-type 'libusb-transfer-type-bulk-stream))
   (libusb-transfer-set-stream-id ptransfer astream-id))
 
 (defun libusb-fill-interrupt-transfer (ptransfer adev-handle anendpoint pbuffer alength acallback puser-data atimeout)
-  (fli:with-foreign-slots (dev-handle endpoint type timeout buffer length user-data callback) ptransfer
+  (xffi:with-foreign-slots (dev-handle endpoint type timeout buffer length user-data callback) ptransfer
     (setf dev-handle  adev-handle
           endpoint    anendpoint
-          type        (fli:enum-symbol-value 'libusb-transfer-type 'LIBUSB-TRANSFER-TYPE-INTERRUPT)
+          type        (xffi:enum-symbol-value 'libusb-transfer-type 'LIBUSB-TRANSFER-TYPE-INTERRUPT)
           timeout     atimeout
           buffer      pbuffer
           length      alength
@@ -108,10 +108,10 @@
           callback    acallback)))
 
 (defun libusb-fill-iso-transfer (ptransfer adev-handle anendpoint pbuffer alength anum-iso-packets acallback puser-data atimeout)
-  (fli:with-foreign-slots (dev-handle endpoint type timeout buffer length num-iso-packets user-data callback) ptransfer
+  (xffi:with-foreign-slots (dev-handle endpoint type timeout buffer length num-iso-packets user-data callback) ptransfer
     (setf dev-handle  adev-handle
           endpoint    anendpoint
-          type        (fli:enum-symbol-value 'libusb-transfer-type 'LIBUSB-TRANSFER-TYPE-ISOCHRONOUS)
+          type        (xffi:enum-symbol-value 'libusb-transfer-type 'LIBUSB-TRANSFER-TYPE-ISOCHRONOUS)
           timeout     atimeout
           buffer      pbuffer
           length      alength
@@ -120,52 +120,52 @@
           callback    acallback)))
 
 (defun libusb-set-iso-packet-lengths (ptransfer alength)
-  (loop for ix from 0 below (fli:foreign-slot-value ptransfer 'num-iso-packets) do
-          (setf (fli:foreign-slot-value
-                 (fli:foreign-aref
-                  (fli:foreign-slot-value ptransfer 'iso-packet-desc)
+  (loop for ix from 0 below (xffi:foreign-slot-value ptransfer 'num-iso-packets) do
+          (setf (xffi:foreign-slot-value
+                 (xffi:foreign-aref
+                  (xffi:foreign-slot-value ptransfer 'iso-packet-desc)
                   ix)
                  'length)
                 alength)))
 
 (defun libusb-get-iso-packet-buffer (ptransfer apacket)
-  (when (< -1 apacket (fli:foreign-slot-value ptransfer 'num-iso-packets))
-    (let ((ptr (fli:make-pointer :address (fli:foreign-slot-value ptransfer 'buffer)
+  (when (< -1 apacket (xffi:foreign-slot-value ptransfer 'num-iso-packets))
+    (let ((ptr (xffi:make-pointer :address (xffi:foreign-slot-value ptransfer 'buffer)
                                  :type    :uint8)))
-      (fli:incf-pointer ptr
+      (xffi:incf-pointer ptr
                         (loop for ix from 0 below apacket sum
-                                (fli:foreign-slot-value
-                                 (fli:foreign-aref
-                                  (fli:foreign-slot-value ptransfer 'iso-packet-desc)
+                                (xffi:foreign-slot-value
+                                 (xffi:foreign-aref
+                                  (xffi:foreign-slot-value ptransfer 'iso-packet-desc)
                                   ix)
                                  'length)))
       )))
 
 (defun libusb-get-iso-packet-buffer-simple (ptransfer apacket)
-  (when (< -1 apacket (fli:foreign-slot-value ptransfer 'num-iso-packets))
-    (let ((ptr  (fli:make-pointer :address (fli:foreign-slot-value ptransfer 'buffer)
+  (when (< -1 apacket (xffi:foreign-slot-value ptransfer 'num-iso-packets))
+    (let ((ptr  (xffi:make-pointer :address (xffi:foreign-slot-value ptransfer 'buffer)
                                   :type    :uint8)))
-      (fli:incf-pointer ptr
+      (xffi:incf-pointer ptr
                         (* apacket
-                           (fli:foreign-slot-value
-                            (fli:foreign-aref
-                             (fli:foreign-slot-value ptransfer 'iso-packet-desc)
+                           (xffi:foreign-slot-value
+                            (xffi:foreign-aref
+                             (xffi:foreign-slot-value ptransfer 'iso-packet-desc)
                              0)
                             'length)))
       )))
 
 (defun libusb-get-descriptor (dev-handle desc-type desc-index pdata len)
   (libusb-control-transfer dev-handle
-                           (fli:enum-symbol-value 'libusb-endpoint-direction 'LIBUSB-ENDPOINT-IN)
-                           (fli:enum-symbol-value 'libusb-standard-request 'LIBUSB-REQUEST-GET-DESCRIPTOR)
+                           (xffi:enum-symbol-value 'libusb-endpoint-direction 'LIBUSB-ENDPOINT-IN)
+                           (xffi:enum-symbol-value 'libusb-standard-request 'LIBUSB-REQUEST-GET-DESCRIPTOR)
                            (logior (ash desc-type 8) desc-index)
                            0 pdata len 1000))
 
 (defun libusb-get-string-descriptor (dev-handle desc-index langid pdata length)
   (libusb-control-transfer dev-handle
-                           (fli:enum-symbol-value 'libusb-endpoint-direction 'LIBUSB-ENDPOINT-IN)
-                           (fli:enum-symbol-value 'libusb-request-descriptor 'LIBUSB-REQUEST-GET-DESCRIPTOR)
-                           (logior (ash (fli:enum-symbol-value 'LIBUSB-DESCRIPTOR-TYPE 'LIBUSB-DT-STRING)
+                           (xffi:enum-symbol-value 'libusb-endpoint-direction 'LIBUSB-ENDPOINT-IN)
+                           (xffi:enum-symbol-value 'libusb-request-descriptor 'LIBUSB-REQUEST-GET-DESCRIPTOR)
+                           (logior (ash (xffi:enum-symbol-value 'LIBUSB-DESCRIPTOR-TYPE 'LIBUSB-DT-STRING)
                                         8)
                                    desc-index)
                            langid pdata length 1000))
